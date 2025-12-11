@@ -1,0 +1,89 @@
+@startuml
+class com.example.hrsystem.model.Intern {
+- String name
+- double aidAmount
++ R accept(Visitor<R>)
+}
+
+
+class com.example.hrsystem.HrSystemApplication {
++ {static} void main(String[])
+}
+
+class com.example.hrsystem.controller.HrController {
+- HtmlDashboardVisitor htmlVisitor
+- PayrollVisitor payrollVisitor
+- SalaryIncreaseVisitor salaryIncreaseVisitor
+- CsvExportVisitor csvExportVisitor
+- List<WorkforceItem> database
++ String getDashboard()
++ void applyRaise(double,HttpServletResponse)
++ ResponseEntity<String> downloadCsv()
+}
+
+
+interface com.example.hrsystem.visitor.Visitor {
+~ R visit(FixedEmployee)
+~ R visit(Freelancer)
+~ R visit(Intern)
+}
+
+class com.example.hrsystem.visitor.CsvExportVisitor {
+- String format(double)
++ String visit(FixedEmployee)
++ String visit(Freelancer)
++ String visit(Intern)
+}
+
+class com.example.hrsystem.model.FixedEmployee {
+- String name
+- double monthlySalary
+- double bonus
++ R accept(Visitor<R>)
+}
+
+
+class com.example.hrsystem.visitor.HtmlDashboardVisitor {
+- String format(double)
++ String visit(FixedEmployee)
++ String visit(Freelancer)
++ String visit(Intern)
+}
+
+class com.example.hrsystem.visitor.SalaryIncreaseVisitor {
+- double percentage
++ void setPercentage(double)
++ Void visit(FixedEmployee)
++ Void visit(Freelancer)
++ Void visit(Intern)
+}
+
+
+class com.example.hrsystem.visitor.PayrollVisitor {
++ Double visit(FixedEmployee)
++ Double visit(Freelancer)
++ Double visit(Intern)
+}
+
+class com.example.hrsystem.model.Freelancer {
+- String name
+- int hoursWorked
+- double hourlyRate
++ R accept(Visitor<R>)
+}
+
+
+interface com.example.hrsystem.visitor.WorkforceItem {
+~ R accept(Visitor<R>)
+}
+
+
+
+com.example.hrsystem.visitor.WorkforceItem <|.. com.example.hrsystem.model.Intern
+com.example.hrsystem.visitor.Visitor <|.. com.example.hrsystem.visitor.CsvExportVisitor
+com.example.hrsystem.visitor.WorkforceItem <|.. com.example.hrsystem.model.FixedEmployee
+com.example.hrsystem.visitor.Visitor <|.. com.example.hrsystem.visitor.HtmlDashboardVisitor
+com.example.hrsystem.visitor.Visitor <|.. com.example.hrsystem.visitor.SalaryIncreaseVisitor
+com.example.hrsystem.visitor.Visitor <|.. com.example.hrsystem.visitor.PayrollVisitor
+com.example.hrsystem.visitor.WorkforceItem <|.. com.example.hrsystem.model.Freelancer
+@enduml
