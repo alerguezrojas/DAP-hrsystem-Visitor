@@ -1,74 +1,123 @@
 package com.example.hrsystem.controller;
 
-import com.example.hrsystem.model.FixedEmployee;
-import com.example.hrsystem.model.Freelancer;
-import com.example.hrsystem.model.Intern;
-import com.example.hrsystem.visitor.HtmlDashboardVisitor;
-import com.example.hrsystem.visitor.PayrollVisitor;
-import com.example.hrsystem.visitor.WorkforceItem;
+import com.example.hrsystem.model.*;
+import com.example.hrsystem.visitor.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api")
 public class HrController {
 
-    private final PayrollVisitor payrollVisitor;
     private final HtmlDashboardVisitor htmlVisitor;
+    private final PayrollVisitor payrollVisitor;
+    private final SalaryIncreaseVisitor salaryIncreaseVisitor;
+    private final CsvExportVisitor csvExportVisitor;
 
-    // Inyección de dependencias por constructor
+    private List<WorkforceItem> database = new ArrayList<>();
+
     @Autowired
-    public HrController(PayrollVisitor payrollVisitor, HtmlDashboardVisitor htmlVisitor) {
-        this.payrollVisitor = payrollVisitor;
+    public HrController(HtmlDashboardVisitor htmlVisitor,
+                        PayrollVisitor payrollVisitor,
+                        SalaryIncreaseVisitor salaryIncreaseVisitor,
+                        CsvExportVisitor csvExportVisitor) {
         this.htmlVisitor = htmlVisitor;
+        this.payrollVisitor = payrollVisitor;
+        this.salaryIncreaseVisitor = salaryIncreaseVisitor;
+        this.csvExportVisitor = csvExportVisitor;
+
+        // Datos iniciales
+        database.add(new FixedEmployee("Ana Directora", 5000.0, 1000.0));
+        database.add(new FixedEmployee("Carlos IT", 3000.0, 200.0));
+        database.add(new Freelancer("Laura Web", 100, 45.0));
+        database.add(new Intern("Pepe Junior", 600.0));
     }
 
-    // Simulamos una base de datos en memoria
-    private List<WorkforceItem> getDatabaseData() {
-        return List.of(
-                new FixedEmployee("Ana Gerente", 4500.00, 1500.00),
-                new FixedEmployee("Luis Sistemas", 3200.00, 200.00),
-                new Freelancer("Mark Frontend", 80, 55.0),
-                new Freelancer("Sarah Diseño", 40, 60.0),
-                new Intern("Javi Becario", 600.00)
-        );
-    }
-
-    // Endpoint 1: Calcula costes (Usa PayrollVisitor)
-    @GetMapping("/nominas")
-    public String getTotalesNomina() {
-        List<WorkforceItem> staff = getDatabaseData();
-        double totalCost = 0;
-
-        for (WorkforceItem person : staff) {
-            // Aquí ocurre la magia del Visitor
-            totalCost += person.accept(payrollVisitor);
-        }
-
-        return "<h1>Coste Total de Nóminas</h1>" +
-                "<p>El coste total para la empresa este mes es: <b>" + totalCost + " €</b></p>";
-    }
-
-    // Endpoint 2: Genera Dashboard (Usa HtmlDashboardVisitor)
+    // --- DASHBOARD VISUAL (Restaurado) ---
     @GetMapping("/dashboard")
     public String getDashboard() {
-        List<WorkforceItem> staff = getDatabaseData();
-        StringBuilder htmlBuilder = new StringBuilder();
+        StringBuilder html = new StringBuilder();
+        html.append("<html><body style='font-family: Arial; padding: 20px; background-color: #f4f6f7;'>");
 
-        htmlBuilder.append("<html><body style='font-family: Arial;'>");
-        htmlBuilder.append("<h1>Panel de Recursos Humanos</h1>");
-        htmlBuilder.append("<div style='display: flex; flex-wrap: wrap;'>");
+        // 1. Panel de Control (Estilo Oscuro)
+        html.append("<div style='background: #2c3e50; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>");
+        html.append("<h2 style='margin-top:0;'>Panel de Control RRHH</h2>");
 
-        for (WorkforceItem person : staff) {
-            // Aquí reutilizamos los objetos pero cambiamos la lógica con otro Visitor
-            htmlBuilder.append(person.accept(htmlVisitor));
+        // Botón: Subir Sueldo (Verde)
+        html.append("<form action='/api/acciones/subir' method='get' style='display:inline; margin-right:15px;'>");
+        html.append("<input type='hidden' name='pct' value='10'>");
+        html.append("<button style='padding: 12px 20px; background: #27ae60; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; font-weight: bold;'>💰 Aplicar Subida 10%</button>");
+        html.append("</form>");
+
+        // Botón: Descargar CSV (Azul)
+        html.append("<a href='/api/acciones/descargar' download='empleados.csv' style='text-decoration:none;'>");
+        html.append("<button style='padding: 12px 20px; background: #2980b9; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; font-weight: bold;'>📥 Descargar Excel (CSV)</button>");
+        html.append("</a>");
+        html.append("</div>");
+
+        // 2. Lista de Tarjetas
+        html.append("<div style='display: flex; flex-wrap: wrap; gap: 15px;'>");
+
+        double totalCost = 0;
+
+        for (WorkforceItem item : database) {
+            // A. Visitor Visual: Genera la tarjeta HTML
+            html.append(item.accept(htmlVisitor));
+
+            // B. Visitor Financiero: Calcula el coste para el total de abajo
+            totalCost += item.accept(payrollVisitor);
+        }
+        html.append("</div>");
+
+        // 3. Pie de página con Total (Restaurado)
+        html.append("<div style='margin-top: 30px; padding: 20px; background: white; border-radius: 8px; border-left: 5px solid #2c3e50;'>");
+        html.append("<h3 style='margin:0; color: #2c3e50;'>Coste Total Mensual Estimado: " + String.format("%,.2f", totalCost) + " €</h3>");
+        html.append("</div>");
+
+        html.append("</body></html>");
+
+        return html.toString();
+    }
+
+    // --- ACCIÓN: SUBIR SUELDO ---
+    @GetMapping("/acciones/subir")
+    public String applyRaise(@RequestParam double pct) {
+        salaryIncreaseVisitor.setPercentage(pct);
+        for (WorkforceItem item : database) {
+            item.accept(salaryIncreaseVisitor);
+        }
+        return "<script>alert('Sueldos actualizados correctamente'); window.location.href='/api/dashboard';</script>";
+    }
+
+    // --- ACCIÓN: DESCARGAR CSV (Formato Excel España) ---
+    @GetMapping("/acciones/descargar")
+    public ResponseEntity<String> downloadCsv() {
+        StringBuilder csv = new StringBuilder();
+
+        // Cabecera con ;
+        csv.append("TIPO;NOMBRE;COSTE_NOMINA_ESTIMADO\n");
+
+        double costeTotalEmpresa = 0;
+
+        for (WorkforceItem item : database) {
+            // Línea del empleado (usa formato español gracias a CsvExportVisitor)
+            csv.append(item.accept(csvExportVisitor)).append("\n");
+
+            // Sumamos al total
+            costeTotalEmpresa += item.accept(payrollVisitor);
         }
 
-        htmlBuilder.append("</div></body></html>");
-        return htmlBuilder.toString();
+        // Fila Total con ; y formato de número con coma
+        csv.append("TOTAL;;")
+                .append(String.format("%.2f", costeTotalEmpresa));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"staff_report.csv\"")
+                .body(csv.toString());
     }
 }

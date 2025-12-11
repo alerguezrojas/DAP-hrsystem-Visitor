@@ -9,7 +9,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class Intern implements WorkforceItem {
     private String name;
-    private double aidAmount; // Ayuda económica, no salario
+    private double aidAmount;
 
     @Override
     public <R> R accept(Visitor<R> visitor) {
